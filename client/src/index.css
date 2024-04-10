@@ -1,13 +1,38 @@
-body {
+:root {
+  --Color-50: #fef2f2;
+  --Color-100: #fde3e3;
+  --Color-200: #fccccc;
+  --Color-300: #f9a8a8;
+  --Color-400: #f37676;
+  --Color-500: #e94a4a;
+  --Color-600: #d62c2c;
+  --Color-700: #b32222;
+  --Color-800: #9c2121;
+  --Color-900: #7c2020;
+  --Color-950: #430c0c;
+
+  --header-height: 40px;
+  --header-padding: 10px;
+}
+
+* {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+.errorForm {
+  border: red solid 1px;
 }

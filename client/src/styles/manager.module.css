@@ -1,0 +1,21 @@
+.sectionConections,
+.sectionQueries {
+  overflow-y: scroll; /* Esto mostrará la barra de desplazamiento vertical */
+  overflow-x: scroll; /* Esto mostrará la barra de desplazamiento vertical */
+}
+.sectionConections {
+  width: 28vw;
+  height: calc(100vh - 45px - 92px);
+}
+
+.conections {
+  /* width: calc(100vw-60vw); */
+  height: 45px;
+  display: flex;
+  align-items: center;
+}
+
+.sectionQueries {
+  width: 68vw;
+  height: calc(100vh - 92px);
+}

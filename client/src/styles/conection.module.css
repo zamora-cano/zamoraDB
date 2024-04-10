@@ -1,0 +1,12 @@
+.form {
+  height: calc(
+    100vh - var(--header-height) - var(--header-padding) - var(--header-padding)
+  );
+  display: flex;
+  align-items: center;
+}
+.form form {
+  margin: auto;
+  width: auto;
+  background: white;
+}

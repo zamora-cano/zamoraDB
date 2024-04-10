@@ -1,0 +1,19 @@
+.section {
+  background: var(--Color-50);
+  height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+.firstSection {
+  height: calc(100vh - (var(--header-height) + var(--header-padding) + 10px));
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.secondSection {
+  display: grid;
+}
+img {
+  width: 35px;
+}
