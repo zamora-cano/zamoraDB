@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import styles from "../styles/manager.module.css";
 import ModalMiddle from "../layouts/modals";
-import { MagicMotion } from "react-magic-motion";
 
 import {
   Form,
@@ -43,48 +42,44 @@ const Manager = () => {
     });
 
     setConections((prevConnections) => {
-      // Verificar si el resultado ya existe en prevConnections
-      const isDuplicate = prevConnections.some(
-        (connection) =>
-          connection.serverName === result.serverName &&
-          connection.databases === result.databases
-      );
-
-      // Si no es un duplicado, agregarlo al arreglo prevConnections
-      if (!isDuplicate) {
-        return [...prevConnections, result];
-      }
-
-      // Si es un duplicado, devolver el arreglo prevConnections sin cambios
-      return prevConnections;
+      return [...prevConnections, result];
     });
-
-    console.log(conections);
   };
 
-  const GetTablesSQL = async (database, config, connections) => {
+  const desconectar = (index) => {
+    const updatedConnections = [...conections];
+    updatedConnections.splice(index, 1);
+    setConections(updatedConnections); // Actualizar el estado 'conections'
+  };
+
+  const GetTablesSQL = async (databaseName, config) => {
     try {
       const result = await tablesSQL({
-        database: database,
+        database: databaseName,
         configServer: config,
       });
-      console.log(conections);
 
-      const connectionsWithTables = connections.map((connection) => {
-        const databasesWithTables = connection.databases.map((database) => {
-          const tables = result.map((table) => table.name);
-          if (
-            database.name ===
-            database /* O cualquier otra base de datos a la que deseas agregar tablas */
-          ) {
-            return { ...database, tables };
+      setConections((prevServers) => {
+        const updatedServers = prevServers.map((server) => {
+          if (server.serverName === config.server) {
+            const updatedDatabases = server.databases.map((database) => {
+              if (database.name === databaseName) {
+                return {
+                  ...database,
+                  tables: result,
+                };
+              }
+              return database;
+            });
+            return {
+              ...server,
+              databases: updatedDatabases,
+            };
           }
-          return database;
+          return server;
         });
-        return { ...connection, databases: databasesWithTables };
+        return updatedServers;
       });
-
-      console.log(connectionsWithTables);
     } catch (error) {
       console.error("Error al obtener los datos:", error);
     }
@@ -192,110 +187,133 @@ const Manager = () => {
           <tr>
             <td>
               <div className={styles.sectionConections}>
-                <MagicMotion>
-                  {conections.length > 0 ? (
-                    <>
-                      {conections.map((server, indexConection) => (
-                        <>
-                          <Accordion key={indexConection} defaultActiveKey="0">
-                            <Accordion.Header
-                              eventKey="0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedServer(server.serverName);
-                              }}
-                            >
-                              <Image
-                                src="http://localhost:3000/img/server.png"
-                                rounded
-                              />
-                              {server.serverName}
-                            </Accordion.Header>
-                            <Accordion.Body eventKey="0">
-                              <Table>
-                                <tbody>
-                                  <tr>
-                                    <td>
-                                      <Image
-                                        src="http://localhost:3000/img/addDatabase.png"
-                                        rounded
-                                      />{" "}
-                                      <Image
-                                        src="http://localhost:3000/img/actualizar.png"
-                                        rounded
-                                      />
-                                    </td>
-
-                                    <td>
-                                      {" "}
-                                      <Image
-                                        src="http://localhost:3000/img/cerrarSesion.png"
-                                        rounded
-                                      />
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </Table>
-
-                              {server.databases.map((database, index) => (
-                                <Accordion
-                                  key={index}
-                                  defaultActiveKey="0"
-                                  onClick={() => {
-                                    setSelectedServer(server.serverName);
-                                    setSelectedDataBase(database.name);
-                                    setSelectedConfig(server.config);
-                                    GetTablesSQL(
-                                      database.name,
-                                      server.config,
-                                      conecting[indexConection]
-                                    );
-                                  }}
-                                >
-                                  <Accordion.Header
-                                    eventKey="0"
-                                    onClick={() => {}}
-                                  >
+                {conections.length > 0 ? (
+                  <>
+                    {conections.map((server, indexConection) => (
+                      <>
+                        <Accordion key={indexConection} defaultActiveKey="0">
+                          <Accordion.Header
+                            eventKey="0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedServer(server.serverName);
+                            }}
+                          >
+                            <Image
+                              src="http://localhost:3000/img/server.png"
+                              rounded
+                            />
+                            {server.serverName}
+                          </Accordion.Header>
+                          <Accordion.Body eventKey="0">
+                            <Table>
+                              <tbody>
+                                <tr>
+                                  <td>
                                     <Image
-                                      src="http://localhost:3000/img/database.png"
+                                      src="http://localhost:3000/img/addDatabase.png"
+                                      rounded
+                                    />{" "}
+                                    <Image
+                                      src="http://localhost:3000/img/actualizar.png"
                                       rounded
                                     />
-                                    {database.name}{" "}
-                                  </Accordion.Header>
-                                  <Accordion.Body eventKey="0">
-                                    <Table>
-                                      <tbody>
+                                  </td>
+
+                                  <td>
+                                    {" "}
+                                    <Image
+                                      src="http://localhost:3000/img/cerrarSesion.png"
+                                      rounded
+                                      onClick={() =>
+                                        desconectar(indexConection)
+                                      }
+                                    />
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </Table>
+
+                            {server.databases.map((database, index) => (
+                              <Accordion
+                                key={index}
+                                defaultActiveKey="0"
+                                onClick={() => {
+                                  setSelectedServer(server.serverName);
+                                  setSelectedDataBase(database.name);
+                                  setSelectedConfig(server.config);
+                                  GetTablesSQL(
+                                    database.name,
+                                    server.config,
+                                    conecting[indexConection]
+                                  );
+                                }}
+                              >
+                                <Accordion.Header
+                                  eventKey="0"
+                                  onClick={() => {}}
+                                >
+                                  <Image
+                                    src="http://localhost:3000/img/database.png"
+                                    rounded
+                                  />
+                                  {database.name}
+                                </Accordion.Header>
+                                <Accordion.Body eventKey="0">
+                                  <Table>
+                                    <tbody>
+                                      <tr>
+                                        <td>
+                                          <Image
+                                            src="http://localhost:3000/img/addTable.webp"
+                                            rounded
+                                          />
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </Table>
+                                  <Table striped hover>
+                                    <tbody>
+                                      {database.tables &&
+                                      database.tables.length > 0 ? (
+                                        database.tables.map((table, index) => (
+                                          <tr
+                                            key={index}
+                                            onClick={() => {
+                                              setSelectedTable(table.name);
+                                            }}
+                                          >
+                                            <td>
+                                              <Image
+                                                src="http://localhost:3000/img/table.png"
+                                                rounded
+                                              />{" "}
+                                              {table.name}
+                                            </td>
+                                          </tr>
+                                        ))
+                                      ) : (
                                         <tr>
-                                          <td>
-                                            <Image
-                                              src="http://localhost:3000/img/addTable.webp"
-                                              rounded
-                                            />{" "}
+                                          <td colSpan="2">
+                                            Esta base de datos no tiene tablas
                                           </td>
                                         </tr>
-                                      </tbody>
-                                    </Table>
-                                    <Table>
-                                      <tbody>
-                                        <tr>
-                                          <td>tabla</td>
-                                        </tr>
-                                      </tbody>
-                                    </Table>
-                                  </Accordion.Body>
-                                </Accordion>
-                              ))}
-                            </Accordion.Body>
-                          </Accordion>
-                        </>
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      <p>No hay servidor seleccionado.</p>
-                    </>
-                  )}
-                </MagicMotion>
+                                      )}
+                                    </tbody>
+                                  </Table>
+                                </Accordion.Body>
+                              </Accordion>
+                            ))}
+                          </Accordion.Body>
+                        </Accordion>
+                      </>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <p>No hay servidor seleccionado.</p>
+                  </>
+                )}
               </div>
             </td>
           </tr>
