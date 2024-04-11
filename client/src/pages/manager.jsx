@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import styles from "../styles/manager.module.css";
 import ModalMiddle from "../layouts/modals";
 
+import ConsultaSQL from "../layouts/consultaSQL";
+
 import {
   Form,
   InputGroup,
@@ -10,13 +12,197 @@ import {
   Image,
   Tab,
   Tabs,
+  Modal,
+  Button,
 } from "react-bootstrap";
 
 import { createConectionSQL, tablesSQL } from "../functions/httpHelper";
-import TablesSQL from "../layouts/TablesSQL";
-import ConsultaSQL from "../layouts/consultaSQL";
+import TableOptions from "../layouts/tableOptions";
 
 const Manager = () => {
+  const reservedKeywords = [
+    "ADD",
+    "ALL",
+    "ALTER",
+    "AND",
+    "ANY",
+    "AS",
+    "ASC",
+    "AUTHORIZATION",
+    "BACKUP",
+    "BEGIN",
+    "BETWEEN",
+    "BREAK",
+    "BROWSE",
+    "BULK",
+    "BY",
+    "CASCADE",
+    "CASE",
+    "CHECK",
+    "CHECKPOINT",
+    "CLOSE",
+    "CLUSTERED",
+    "COALESCE",
+    "COLLATE",
+    "COLUMN",
+    "COMMIT",
+    "COMPUTE",
+    "CONSTRAINT",
+    "CONTAINS",
+    "CONTAINSTABLE",
+    "CONTINUE",
+    "CONVERT",
+    "CREATE",
+    "CROSS",
+    "CURRENT",
+    "CURRENT_DATE",
+    "CURRENT_TIME",
+    "CURRENT_TIMESTAMP",
+    "CURRENT_USER",
+    "CURSOR",
+    "DATABASE",
+    "DBCC",
+    "DEALLOCATE",
+    "DECLARE",
+    "DEFAULT",
+    "DELETE",
+    "DENY",
+    "DESC",
+    "DISK",
+    "DISTINCT",
+    "DISTRIBUTED",
+    "DOUBLE",
+    "DROP",
+    "DUMP",
+    "ELSE",
+    "END",
+    "ERRLVL",
+    "ESCAPE",
+    "EXCEPT",
+    "EXEC",
+    "EXECUTE",
+    "EXISTS",
+    "EXIT",
+    "EXTERNAL",
+    "FETCH",
+    "FILE",
+    "FILLFACTOR",
+    "FOR",
+    "FOREIGN",
+    "FREETEXT",
+    "FREETEXTTABLE",
+    "FROM",
+    "FULL",
+    "FUNCTION",
+    "GOTO",
+    "GRANT",
+    "GROUP",
+    "HAVING",
+    "HOLDLOCK",
+    "IDENTITY",
+    "IDENTITY_INSERT",
+    "IDENTITYCOL",
+    "IF",
+    "IN",
+    "INDEX",
+    "INNER",
+    "INSERT",
+    "INTERSECT",
+    "INTO",
+    "IS",
+    "JOIN",
+    "KEY",
+    "KILL",
+    "LEFT",
+    "LIKE",
+    "LINENO",
+    "LOAD",
+    "MERGE",
+    "NATIONAL",
+    "NOCHECK",
+    "NONCLUSTERED",
+    "NOT",
+    "NULL",
+    "NULLIF",
+    "OF",
+    "OFF",
+    "OFFSETS",
+    "ON",
+    "OPEN",
+    "OPENDATASOURCE",
+    "OPENQUERY",
+    "OPENROWSET",
+    "OPENXML",
+    "OPTION",
+    "OR",
+    "ORDER",
+    "OUTER",
+    "OVER",
+    "PERCENT",
+    "PIVOT",
+    "PLAN",
+    "PRECISION",
+    "PRIMARY",
+    "PRINT",
+    "PROC",
+    "PROCEDURE",
+    "PUBLIC",
+    "RAISERROR",
+    "READ",
+    "READTEXT",
+    "RECONFIGURE",
+    "REFERENCES",
+    "REPLICATION",
+    "RESTORE",
+    "RESTRICT",
+    "RETURN",
+    "REVERT",
+    "REVOKE",
+    "RIGHT",
+    "ROLLBACK",
+    "ROWCOUNT",
+    "ROWGUIDCOL",
+    "RULE",
+    "SAVE",
+    "SCHEMA",
+    "SELECT",
+    "SESSION_USER",
+    "SET",
+    "SETUSER",
+    "SHUTDOWN",
+    "SOME",
+    "STATISTICS",
+    "SYSTEM_USER",
+    "TABLE",
+    "TABLESAMPLE",
+    "TEXTSIZE",
+    "THEN",
+    "TO",
+    "TOP",
+    "TRAN",
+    "TRANSACTION",
+    "TRIGGER",
+    "TRUNCATE",
+    "TRY_CONVERT",
+    "TSEQUAL",
+    "UNION",
+    "UNIQUE",
+    "UNPIVOT",
+    "UPDATE",
+    "UPDATETEXT",
+    "USE",
+    "USER",
+    "VALUES",
+    "VARYING",
+    "VIEW",
+    "WAITFOR",
+    "WHEN",
+    "WHERE",
+    "WHILE",
+    "WITH",
+    "WITHIN GROUP",
+    "WRITETEXT" /* Agrega más palabras reservadas si es necesario */,
+  ];
   const [conections, setConections] = useState([]);
   const [conecting, setConecting] = useState(false);
   const [userConection, setUserConection] = useState("");
@@ -26,13 +212,18 @@ const Manager = () => {
   const [selectedServer, setSelectedServer] = useState("");
   const [selectedDataBase, setSelectedDataBase] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
-
   const [selectedConfig, setSelectedConfig] = useState([]);
 
   const [key, setKey] = useState("query");
 
+  const [showModalCreateDatabase, setShowModalCreateDatabase] = useState(false);
+  const [nameDBCreate, setNameDBCreate] = useState("");
+  const [nameDBCreateError, setNameDBCreateError] = useState("");
+
   const conectar = async (event) => {
     event.preventDefault();
+
+    setConecting(true);
 
     const result = await createConectionSQL({
       setConection: setConections,
@@ -44,6 +235,7 @@ const Manager = () => {
     setConections((prevConnections) => {
       return [...prevConnections, result];
     });
+    setConecting(false);
   };
 
   const desconectar = (index) => {
@@ -83,6 +275,35 @@ const Manager = () => {
     } catch (error) {
       console.error("Error al obtener los datos:", error);
     }
+  };
+
+  const handleClose = () => setShowModalCreateDatabase(false);
+  const handleShow = () => setShowModalCreateDatabase(true);
+
+  const createDataBase = () => {
+    if (nameDBCreate === "") {
+      setNameDBCreateError("El campo no debe estar vacío");
+      return;
+    }
+
+    const invalidCharsRegex = /[^a-zA-Z0-9$_]/;
+
+    if (invalidCharsRegex.test(nameDBCreate)) {
+      setNameDBCreateError(
+        "El nombre de la base de datos contiene caracteres inválidos"
+      );
+      return;
+    }
+
+    // Verificar si el nombre de la base de datos es una palabra reservada
+
+    if (reservedKeywords.includes(nameDBCreate.toUpperCase())) {
+      setNameDBCreateError(
+        "El nombre de la base de datos es una palabra reservada"
+      );
+      return;
+    }
+    setNameDBCreateError("");
   };
 
   return (
@@ -155,7 +376,7 @@ const Manager = () => {
             </td>
             <td rowSpan={2}>
               <div className={styles.sectionQueries}>
-                {/* <Tabs
+                <Tabs
                   id="controlled-tab-example"
                   activeKey={key}
                   onSelect={(k) => setKey(k)}
@@ -170,17 +391,22 @@ const Manager = () => {
                     )}
                   </Tab>
                   <Tab
-                    eventKey="profile"
-                    title={selectedTable ? selectedTable : "Profile"}
+                    eventKey="tableOptions"
+                    title={selectedTable ? selectedTable : "Tabla"}
                     disabled={!selectedTable || !selectedServer}
                   >
-                    <TablesSQL
-                      server={selectedServer}
-                      table={selectedTable}
-                      config={selectedConfig}
-                    />
+                    {selectedTable && selectedConfig && selectedDataBase && (
+                      <TableOptions
+                        table={selectedTable}
+                        config={selectedConfig}
+                        database={selectedDataBase}
+                      />
+                    )}
                   </Tab>
-                </Tabs> */}
+                  <Tab eventKey="create" title="Creación">
+                    Tab content for Profile
+                  </Tab>
+                </Tabs>
               </div>
             </td>
           </tr>
@@ -199,10 +425,7 @@ const Manager = () => {
                               setSelectedServer(server.serverName);
                             }}
                           >
-                            <Image
-                              src="http://localhost:3000/img/server.png"
-                              rounded
-                            />
+                            <Image src="http://localhost:3000/img/server.png" />
                             {server.serverName}
                           </Accordion.Header>
                           <Accordion.Body eventKey="0">
@@ -210,21 +433,60 @@ const Manager = () => {
                               <tbody>
                                 <tr>
                                   <td>
+                                    {/* boton crear bases de datos */}
                                     <Image
                                       src="http://localhost:3000/img/addDatabase.png"
-                                      rounded
-                                    />{" "}
-                                    <Image
-                                      src="http://localhost:3000/img/actualizar.png"
-                                      rounded
+                                      onClick={handleShow}
                                     />
+                                    <Modal
+                                      show={showModalCreateDatabase}
+                                      onHide={handleClose}
+                                      centered
+                                    >
+                                      <Modal.Header closeButton>
+                                        <Modal.Title>
+                                          Crear base de datos
+                                        </Modal.Title>
+                                      </Modal.Header>
+                                      <Modal.Body>
+                                        <Form.Control
+                                          placeholder="Nombre_de_base_de_datos"
+                                          value={nameDBCreate}
+                                          onChange={(e) => {
+                                            setNameDBCreate(e.target.value);
+                                          }}
+                                          required
+                                          isInvalid={
+                                            nameDBCreateError ? true : false
+                                          }
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                          {nameDBCreateError}
+                                        </Form.Control.Feedback>
+                                      </Modal.Body>
+                                      <Modal.Footer>
+                                        <Button
+                                          variant="secondary"
+                                          onClick={handleClose}
+                                        >
+                                          Cancelar
+                                        </Button>
+                                        <Button
+                                          variant="primary"
+                                          onClick={createDataBase}
+                                        >
+                                          Crear
+                                        </Button>
+                                      </Modal.Footer>
+                                    </Modal>{" "}
+                                    {/* boton actualizar */}
+                                    <Image src="http://localhost:3000/img/actualizar.png" />
                                   </td>
 
                                   <td>
                                     {" "}
                                     <Image
                                       src="http://localhost:3000/img/cerrarSesion.png"
-                                      rounded
                                       onClick={() =>
                                         desconectar(indexConection)
                                       }
@@ -253,10 +515,7 @@ const Manager = () => {
                                   eventKey="0"
                                   onClick={() => {}}
                                 >
-                                  <Image
-                                    src="http://localhost:3000/img/database.png"
-                                    rounded
-                                  />
+                                  <Image src="http://localhost:3000/img/database.png" />
                                   {database.name}
                                 </Accordion.Header>
                                 <Accordion.Body eventKey="0">
@@ -264,10 +523,7 @@ const Manager = () => {
                                     <tbody>
                                       <tr>
                                         <td>
-                                          <Image
-                                            src="http://localhost:3000/img/addTable.webp"
-                                            rounded
-                                          />
+                                          <Image src="http://localhost:3000/img/addTable.webp" />
                                         </td>
                                       </tr>
                                     </tbody>
@@ -284,10 +540,7 @@ const Manager = () => {
                                             }}
                                           >
                                             <td>
-                                              <Image
-                                                src="http://localhost:3000/img/table.png"
-                                                rounded
-                                              />{" "}
+                                              <Image src="http://localhost:3000/img/table.png" />{" "}
                                               {table.name}
                                             </td>
                                           </tr>

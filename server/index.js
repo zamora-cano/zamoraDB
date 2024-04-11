@@ -124,6 +124,39 @@ app.post("/columns", async (req, res) => {
   }
 });
 
+app.post("/datas", async (req, res) => {
+  console.log("--- datos ---");
+  console.log("- obteniendo datos");
+  const table = req.body.table;
+
+  const config = {
+    server: req.body.server,
+    user: req.body.user,
+    password: req.body.password,
+    database: req.body.database,
+
+    options: {
+      trustedConnection: true,
+      encrypt: true, // Habilita la encriptación
+      validateBulkLoadParameters: false, // Desactiva la validación de parámetros de carga masiva
+      trustServerCertificate: true, // Ignora la validación del certificado (NO RECOMENDADO para producción)
+    },
+  };
+
+  const consulta = `SELECT * FROM ${table};`;
+
+  try {
+    console.log("- Haciendo la consulta");
+    const result = await consultaSQL(config, consulta);
+    console.log("- Enviando resultado");
+    res.json(result);
+    await sql.close();
+  } catch (error) {
+    res.status(500).json({ error: "Error al ejecutar la consulta SQL" });
+    await sql.close();
+  }
+});
+
 app.listen(3001, () => {
   console.log(
     `----- \x1b[1m Corriendo servidor en el puerto: \x1b \x1b[33m 3001\x1b[0m -----`

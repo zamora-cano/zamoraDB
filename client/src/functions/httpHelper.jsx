@@ -78,9 +78,31 @@ const columnsSQL = async ({ database, configServer, table }) => {
     },
     body: JSON.stringify(config), // Convertir el objeto a una cadena JSON
   });
+
+  const data = await response.json(); // Esperar la respuesta JSON
+
+  return data;
+};
+const datasSQL = async ({ database, configServer, table }) => {
+  const config = {
+    user: configServer.user,
+    server: configServer.server,
+    password: configServer.password,
+    database: database,
+    table: table,
+  };
+
+  const response = await fetch("http://localhost:3001/datas", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(config), // Convertir el objeto a una cadena JSON
+  });
+
   const data = await response.json(); // Esperar la respuesta JSON
 
   return data;
 };
 
-export { createConectionSQL, tablesSQL, columnsSQL };
+export { createConectionSQL, tablesSQL, columnsSQL, datasSQL };

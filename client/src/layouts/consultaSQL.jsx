@@ -4,7 +4,9 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { darcula } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 const ConsultaSQL = () => {
-  const [consulta, setConsulta] = useState("use database");
+  const [consulta, setConsulta] = useState(
+    "use database name_database; \n select * from name_table"
+  );
   return (
     <>
       <Table>
@@ -33,9 +35,9 @@ const ConsultaSQL = () => {
           </tr>
           <tr>
             <td>
-              {/* <SyntaxHighlighter language="sql" style={darcula}>
+              <SyntaxHighlighter language="sql" style={darcula}>
                 {consulta}
-              </SyntaxHighlighter> */}
+              </SyntaxHighlighter>
             </td>
           </tr>
         </tbody>
