@@ -9,6 +9,7 @@ async function consultaSQL(config, consulta) {
     const result = await pool.request().query(consulta);
 
     await pool.close();
+    await sql.close();
 
     // Devolver los resultados
     return result.recordset;

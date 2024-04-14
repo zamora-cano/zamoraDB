@@ -62,6 +62,61 @@ const tablesSQL = async ({ database, configServer }) => {
   return data;
 };
 
+const CreateTableSQL = async ({ configServer, name, columns, database }) => {
+  const config = {
+    user: configServer.user,
+    server: configServer.server,
+    password: configServer.password,
+    database: database,
+    table: name,
+    columns: columns,
+  };
+
+  const response = await fetch("http://localhost:3001/createtable", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(config), // Convertir el objeto a una cadena JSON
+  });
+
+  const data = await response.json(); // Esperar la respuesta JSON
+
+  return data;
+};
+
+const UpdateTableSQL = async ({
+  configServer,
+  name,
+  columns,
+  database,
+  table,
+  oldcolumns,
+}) => {
+  const config = {
+    user: configServer.user,
+    server: configServer.server,
+    password: configServer.password,
+    database: database,
+    newName: name,
+    table: table,
+    columns: columns,
+    oldcolumns: oldcolumns,
+  };
+
+  const response = await fetch("http://localhost:3001/updatetable", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(config), // Convertir el objeto a una cadena JSON
+  });
+
+  const data = await response.json(); // Esperar la respuesta JSON
+
+  return data;
+};
+
 const columnsSQL = async ({ database, configServer, table }) => {
   const config = {
     user: configServer.user,
@@ -83,6 +138,7 @@ const columnsSQL = async ({ database, configServer, table }) => {
 
   return data;
 };
+
 const datasSQL = async ({ database, configServer, table }) => {
   const config = {
     user: configServer.user,
@@ -105,4 +161,55 @@ const datasSQL = async ({ database, configServer, table }) => {
   return data;
 };
 
-export { createConectionSQL, tablesSQL, columnsSQL, datasSQL };
+const createDBSQL = async ({ configServer, namedb }) => {
+  const config = {
+    user: configServer.user,
+    server: configServer.server,
+    password: configServer.password,
+    db: namedb,
+  };
+
+  const response = await fetch("http://localhost:3001/createdb", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(config), // Convertir el objeto a una cadena JSON
+  });
+
+  const data = await response.json(); // Esperar la respuesta JSON
+
+  return data;
+};
+
+const deleteDBSQL = async ({ configServer, namedb }) => {
+  const config = {
+    user: configServer.user,
+    server: configServer.server,
+    password: configServer.password,
+    db: namedb,
+  };
+
+  const response = await fetch("http://localhost:3001/deletedb", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(config), // Convertir el objeto a una cadena JSON
+  });
+
+  const data = await response.json(); // Esperar la respuesta JSON
+
+  return data;
+};
+
+export {
+  createConectionSQL,
+  tablesSQL,
+  columnsSQL,
+  datasSQL,
+  createDBSQL,
+  deleteDBSQL,
+  CreateTableSQL,
+  UpdateTableSQL,
+};

@@ -1,18 +1,11 @@
-import { UpdateTableSQL, columnsSQL, datasSQL } from "../functions/httpHelper";
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  Form,
-  Table,
-  Button,
-  Tab,
-  Tabs,
-  Dropdown,
-  ButtonGroup,
-} from "react-bootstrap";
+import { useState, useEffect } from "react";
+import { Form, Table, Tab, Tabs, Button } from "react-bootstrap";
 import MakeToast from "./makeToast";
+import { CreateTableSQL } from "../functions/httpHelper";
 
-const TableOptions = ({ table, config, database, reservedKeywords }) => {
-  const [nameTable, setNameTable] = useState(table);
+const CreacionSQL = ({ selectedDatabase, reservedKeywords, config }) => {
+  const [database, setDatabase] = useState("");
+  const [nameTable, setNameTable] = useState("");
   const [nameTableError, setNameTableError] = useState("");
 
   const [showToast, setShowToast] = useState(false);
@@ -21,7 +14,6 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
   const [toastVariant, setToastVariant] = useState("primary");
 
   const [enviandoDatos, setEnviandoDatos] = useState(false);
-  const [oldcolumns, setOldColums] = useState([]);
   const [columns, setColumns] = useState([
     {
       name: "",
@@ -34,52 +26,9 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
     },
   ]);
 
-  const [datas, setDatas] = useState([]);
-
-  const fetchColumns = useCallback(async () => {
-    try {
-      const result = await columnsSQL({
-        database,
-        configServer: config,
-        table,
-      });
-      // Transformar los datos obtenidos al formato deseado
-      const transformedColumns = result.map((column) => ({
-        name: column.COLUMN_NAME,
-        nameError: "",
-        type: column.DATA_TYPE,
-        length: column.CHARACTER_MAXIMUM_LENGTH
-          ? column.CHARACTER_MAXIMUM_LENGTH.toString()
-          : "",
-        primaryKeys: column.primary_key_column === column.COLUMN_NAME,
-        primaryKeyError: false,
-        nullables: column.IS_NULLABLE === "YES",
-      }));
-
-      setColumns(transformedColumns);
-      setOldColums(result);
-
-      setNameTable(table);
-    } catch (error) {
-      console.error("Error fetching columns:", error);
-    }
-  }, [database, config, table, setNameTable]);
-
   useEffect(() => {
-    fetchColumns();
-  }, [fetchColumns]);
-
-  const handleSelect = async (key) => {
-    if (key === "datos") {
-      const result = await datasSQL({
-        database: database,
-        configServer: config,
-        table: table,
-      });
-      console.log(columns);
-      setDatas(result);
-    }
-  };
+    setDatabase(selectedDatabase);
+  }, [selectedDatabase]);
 
   const AddColums = () => {
     const nuevaColumna = {
@@ -203,7 +152,7 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
     setNameTable(newName);
   };
 
-  const updateTable = async () => {
+  const createTable = async () => {
     setEnviandoDatos(true);
 
     const updatedColumns = columns.map((column) => {
@@ -239,16 +188,14 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
     );
 
     setColumns(updatedColumns);
+
     // Enviar los datos
     if (!hasErrors && nameTable !== "") {
-      console.log("se enviaria los datos xd");
-      const result = await UpdateTableSQL({
-        database: database,
+      const result = await CreateTableSQL({
+        database: selectedDatabase,
         configServer: config,
         name: nameTable,
-        columns: columns,
-        oldcolumns: oldcolumns,
-        table: table,
+        columns,
       });
 
       console.log(result);
@@ -267,35 +214,34 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
     } else {
       setNameTableError("El nombre de la tabla está vacía");
     }
-    fetchColumns();
-
     setEnviandoDatos(false);
   };
 
   return (
     <>
       <MakeToast
-        title={toastTitle}
+        variant={toastVariant}
         show={showToast}
         setShow={setShowToast}
-        variant={toastVariant}
+        title={toastTitle}
       >
         {toastText}
       </MakeToast>
-      <Tabs
-        defaultActiveKey="profile"
-        id="uncontrolled-tab-example"
-        className="mb-3"
-        onSelect={handleSelect}
-      >
-        <Tab eventKey="update" title="Update">
+      <Tabs>
+        <Tab eventKey="table" title="Tabla">
           <Table>
             <thead>
+              <tr>
+                <th colSpan={6}>
+                  {database !== ""
+                    ? "Creación de una tabla para: " + database
+                    : "No se ha seleccionado una base de datos"}
+                </th>
+              </tr>
               <tr>
                 <th>Nombre:</th>
                 <th colSpan={5}>
                   <Form.Control
-                    placeholder={table}
                     value={nameTable}
                     onChange={validateTableName}
                     isInvalid={nameTableError ? true : false}
@@ -305,28 +251,21 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                   </Form.Control.Feedback>
                 </th>
                 <td>
-                  <Dropdown as={ButtonGroup}>
-                    <Button
-                      variant="primary"
-                      onClick={updateTable}
-                      disabled={enviandoDatos}
-                    >
-                      Guardar
+                  {enviandoDatos ? (
+                    <Button variant="primary" disabled onClick={createTable}>
+                      Enviando...
                     </Button>
-                    <Dropdown.Toggle split variant="primary" />
-                    <Dropdown.Menu>
-                      <Dropdown.Item>Borrar Tabla</Dropdown.Item>
-                    </Dropdown.Menu>
-                  </Dropdown>
+                  ) : (
+                    <Button variant="primary" onClick={createTable}>
+                      Crear
+                    </Button>
+                  )}
                 </td>
               </tr>
               <tr>
                 <th>Columnas</th>
                 <th colSpan={6}>
-                  <Button onClick={AddColums}>Agregar</Button>{" "}
-                  <Button variant="secondary" onClick={fetchColumns}>
-                    recargar
-                  </Button>
+                  <Button onClick={AddColums}>Agregar</Button>
                 </th>
               </tr>
               <tr>
@@ -363,7 +302,6 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                         onChange={(e) =>
                           UpdateColumn(index, e.target.value, "type")
                         }
-                        value={column.type}
                       >
                         <optgroup label="Numeric">
                           <option value="int">INT</option>
@@ -413,7 +351,7 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                       <Form.Check
                         type="checkbox"
                         label="Primary key"
-                        checked={column.primaryKeys}
+                        value={column.primaryKeys}
                         onChange={(e) => {
                           validatePrimaryKey(e, index);
                         }}
@@ -427,7 +365,7 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                       <Form.Check
                         type="checkbox"
                         label="Null"
-                        checked={column.nullables}
+                        value={column.nullables}
                         onChange={(e) =>
                           UpdateColumn(index, e.target.checked, "nullables")
                         }
@@ -447,51 +385,13 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
             </tbody>
           </Table>
         </Tab>
-        <Tab eventKey="datos" title="Datos">
-          <Table striped>
-            <thead>
-              <tr>
-                {columns && columns.length > 0 ? (
-                  <>
-                    <th>#</th>
 
-                    {columns.map((column, index) => (
-                      <th key={index}>{column.name}</th>
-                    ))}
-                  </>
-                ) : (
-                  "No hay datos"
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {datas &&
-                datas.length > 0 &&
-                datas.map((data, index) => (
-                  <>
-                    <tr>
-                      <td>{index + 1}</td>
-                      {columns.map((column, index) => (
-                        <td index>{data[column.name]}</td>
-                      ))}
-                    </tr>
-                  </>
-                ))}
-            </tbody>
-          </Table>
+        <Tab eventKey="datos" title="datos">
+          insertar datos
         </Tab>
       </Tabs>
     </>
   );
 };
 
-export default TableOptions;
-
-// {
-//     "COLUMN_NAME": "cve_aerolineas",
-//     "DATA_TYPE": "int",
-//     "IS_NULLABLE": "NO",
-//     "CHARACTER_MAXIMUM_LENGTH": null,
-//     "COLLATION_NAME": null,
-//     "primary_key_column": "cve_aerolineas",
-// }
+export default CreacionSQL;

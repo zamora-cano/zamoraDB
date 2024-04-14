@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import styles from "../styles/manager.module.css";
-import ModalMiddle from "../layouts/modals";
 
+import ModalMiddle from "../layouts/modals";
 import ConsultaSQL from "../layouts/consultaSQL";
+import TableOptions from "../layouts/tableOptions";
+import CreacionSQL from "../layouts/creacionSQL";
 
 import {
   Form,
@@ -16,8 +18,12 @@ import {
   Button,
 } from "react-bootstrap";
 
-import { createConectionSQL, tablesSQL } from "../functions/httpHelper";
-import TableOptions from "../layouts/tableOptions";
+import {
+  createConectionSQL,
+  createDBSQL,
+  deleteDBSQL,
+  tablesSQL,
+} from "../functions/httpHelper";
 
 const Manager = () => {
   const reservedKeywords = [
@@ -108,6 +114,7 @@ const Manager = () => {
     "INNER",
     "INSERT",
     "INTERSECT",
+    "INT",
     "INTO",
     "IS",
     "JOIN",
@@ -213,12 +220,25 @@ const Manager = () => {
   const [selectedDataBase, setSelectedDataBase] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [selectedConfig, setSelectedConfig] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState();
 
   const [key, setKey] = useState("query");
 
   const [showModalCreateDatabase, setShowModalCreateDatabase] = useState(false);
   const [nameDBCreate, setNameDBCreate] = useState("");
   const [nameDBCreateError, setNameDBCreateError] = useState("");
+
+  const [nameDBAlter, setNameDBAlter] = useState("");
+  const [nameDBAlterError, setNameDBAlterError] = useState("");
+
+  const [showModalDeleteDatabase, setShowModalDeleteDatabase] = useState(false);
+  const [nameDeleteDatabase, setNameDeleteDatabase] = useState({
+    nameDB: "",
+    index: "",
+    config: "",
+  });
+
+  const [DBnameConfig, setDBnameConfig] = useState("");
 
   const conectar = async (event) => {
     event.preventDefault();
@@ -236,6 +256,23 @@ const Manager = () => {
       return [...prevConnections, result];
     });
     setConecting(false);
+  };
+
+  const reload = async (index, config) => {
+    const result = await createConectionSQL({
+      setConection: setConections,
+      serverName: config.server,
+      serverUser: config.user,
+      serverPassword: config.password,
+    });
+
+    const nuevasConexiones = [...conections];
+
+    nuevasConexiones[index] = {
+      ...nuevasConexiones[index],
+      databases: result.databases,
+    };
+    setConections(nuevasConexiones);
   };
 
   const desconectar = (index) => {
@@ -280,7 +317,7 @@ const Manager = () => {
   const handleClose = () => setShowModalCreateDatabase(false);
   const handleShow = () => setShowModalCreateDatabase(true);
 
-  const createDataBase = () => {
+  const createDataBase = async (config, index) => {
     if (nameDBCreate === "") {
       setNameDBCreateError("El campo no debe estar vacío");
       return;
@@ -304,6 +341,24 @@ const Manager = () => {
       return;
     }
     setNameDBCreateError("");
+    const result = await createDBSQL({
+      configServer: config,
+      namedb: nameDBCreate,
+    });
+    if (result.error !== "") {
+      setNameDBCreateError(result.error);
+    }
+    setShowModalCreateDatabase(false);
+    reload(index, config);
+  };
+
+  const deleteDatabase = async () => {
+    const result = await deleteDBSQL({
+      configServer: nameDeleteDatabase.config,
+      namedb: nameDeleteDatabase.nameDB,
+    });
+    setShowModalDeleteDatabase(false);
+    reload(nameDeleteDatabase.index, nameDeleteDatabase.config);
   };
 
   return (
@@ -400,11 +455,42 @@ const Manager = () => {
                         table={selectedTable}
                         config={selectedConfig}
                         database={selectedDataBase}
+                        reservedKeywords={reservedKeywords}
                       />
                     )}
                   </Tab>
-                  <Tab eventKey="create" title="Creación">
-                    Tab content for Profile
+                  <Tab
+                    eventKey="create"
+                    title="Creación"
+                    disabled={selectedDataBase === ""}
+                  >
+                    <CreacionSQL
+                      selectedDatabase={selectedDataBase}
+                      reservedKeywords={reservedKeywords}
+                      config={selectedConfig}
+                    />
+                  </Tab>
+                  <Tab
+                    eventKey="alter"
+                    title="Configuracion"
+                    disabled={DBnameConfig === ""}
+                  >
+                    <InputGroup className="mb-3">
+                      <InputGroup.Text id="basic-addon1">
+                        Nombre
+                      </InputGroup.Text>
+                      <Form.Control
+                        placeholder={DBnameConfig}
+                        aria-label="Username"
+                        aria-describedby="basic-addon1"
+                        onChange={(e) => {
+                          setNameDBAlter(e.target.value);
+                        }}
+                      />
+                      <Button variant="outline-secondary" id="button-addon1">
+                        Cambiar nombre
+                      </Button>
+                    </InputGroup>
                   </Tab>
                 </Tabs>
               </div>
@@ -423,9 +509,10 @@ const Manager = () => {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedServer(server.serverName);
+                              setSelectedIndex(indexConection);
                             }}
                           >
-                            <Image src="http://localhost:3000/img/server.png" />
+                            <Image src="./img/server.png" />
                             {server.serverName}
                           </Accordion.Header>
                           <Accordion.Body eventKey="0">
@@ -435,7 +522,7 @@ const Manager = () => {
                                   <td>
                                     {/* boton crear bases de datos */}
                                     <Image
-                                      src="http://localhost:3000/img/addDatabase.png"
+                                      src="./img/addDatabase.png"
                                       onClick={handleShow}
                                     />
                                     <Modal
@@ -473,20 +560,29 @@ const Manager = () => {
                                         </Button>
                                         <Button
                                           variant="primary"
-                                          onClick={createDataBase}
+                                          onClick={() =>
+                                            createDataBase(
+                                              server.config,
+                                              indexConection
+                                            )
+                                          }
                                         >
                                           Crear
                                         </Button>
                                       </Modal.Footer>
-                                    </Modal>{" "}
+                                    </Modal>
                                     {/* boton actualizar */}
-                                    <Image src="http://localhost:3000/img/actualizar.png" />
+                                    <Image
+                                      src="./img/actualizar.png"
+                                      onClick={() =>
+                                        reload(indexConection, server.config)
+                                      }
+                                    />
                                   </td>
 
-                                  <td>
-                                    {" "}
+                                  <td style={{ textAlign: "end" }}>
                                     <Image
-                                      src="http://localhost:3000/img/cerrarSesion.png"
+                                      src="./img/cerrarSesion.png"
                                       onClick={() =>
                                         desconectar(indexConection)
                                       }
@@ -501,7 +597,6 @@ const Manager = () => {
                                 key={index}
                                 defaultActiveKey="0"
                                 onClick={() => {
-                                  setSelectedServer(server.serverName);
                                   setSelectedDataBase(database.name);
                                   setSelectedConfig(server.config);
                                   GetTablesSQL(
@@ -515,7 +610,7 @@ const Manager = () => {
                                   eventKey="0"
                                   onClick={() => {}}
                                 >
-                                  <Image src="http://localhost:3000/img/database.png" />
+                                  <Image src="./img/database.png" />
                                   {database.name}
                                 </Accordion.Header>
                                 <Accordion.Body eventKey="0">
@@ -523,7 +618,26 @@ const Manager = () => {
                                     <tbody>
                                       <tr>
                                         <td>
-                                          <Image src="http://localhost:3000/img/addTable.webp" />
+                                          {/* ajustes de base de datos */}
+                                          <Image
+                                            src="./img/ajustes.png"
+                                            onClick={() =>
+                                              setDBnameConfig(database.name)
+                                            }
+                                          />
+                                        </td>
+                                        <td style={{ textAlign: "end" }}>
+                                          <Image
+                                            src="./img/boteBorrar.png"
+                                            onClick={() => {
+                                              setNameDeleteDatabase({
+                                                nameDB: database.name,
+                                                index: indexConection,
+                                                config: server.config,
+                                              });
+                                              setShowModalDeleteDatabase(true);
+                                            }}
+                                          />
                                         </td>
                                       </tr>
                                     </tbody>
@@ -540,7 +654,7 @@ const Manager = () => {
                                             }}
                                           >
                                             <td>
-                                              <Image src="http://localhost:3000/img/table.png" />{" "}
+                                              <Image src="./img/table.png" />{" "}
                                               {table.name}
                                             </td>
                                           </tr>
@@ -572,6 +686,32 @@ const Manager = () => {
           </tr>
         </tbody>
       </Table>
+
+      <Modal
+        show={showModalDeleteDatabase}
+        onHide={() => setShowModalDeleteDatabase(false)}
+        variant="danger"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Borrar base de datos</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          ¿Está seguro de que desea eliminar {nameDeleteDatabase.nameDB}? Esta
+          acción no se puede revertir.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowModalDeleteDatabase(false)}
+          >
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={deleteDatabase}>
+            Eliminar
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
