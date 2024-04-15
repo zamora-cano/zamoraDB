@@ -117,6 +117,34 @@ const UpdateTableSQL = async ({
   return data;
 };
 
+const InsertTableSQL = async ({
+  database,
+  configServer,
+  table,
+  dataToInsert,
+}) => {
+  const config = {
+    user: configServer.user,
+    server: configServer.server,
+    password: configServer.password,
+    database: database,
+    table: table,
+    data: dataToInsert,
+  };
+
+  const response = await fetch("http://localhost:3001/insertcolumns", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(config), // Convertir el objeto a una cadena JSON
+  });
+
+  const data = await response.json(); // Esperar la respuesta JSON
+
+  return data;
+};
+
 const columnsSQL = async ({ database, configServer, table }) => {
   const config = {
     user: configServer.user,
@@ -189,7 +217,6 @@ const deleteDBSQL = async ({ configServer, namedb }) => {
     password: configServer.password,
     db: namedb,
   };
-
   const response = await fetch("http://localhost:3001/deletedb", {
     method: "POST",
     headers: {
@@ -212,4 +239,5 @@ export {
   deleteDBSQL,
   CreateTableSQL,
   UpdateTableSQL,
+  InsertTableSQL,
 };

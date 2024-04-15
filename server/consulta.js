@@ -8,15 +8,14 @@ async function consultaSQL(config, consulta) {
     // Crear una solicitud de consulta SQL
     const result = await pool.request().query(consulta);
 
-    await pool.close();
-    await sql.close();
-
     // Devolver los resultados
     return result.recordset;
   } catch (error) {
     // Manejar errores
     console.error("Error al ejecutar la consulta SQL:", error);
     throw error; // Propagar el error para que sea manejado por el llamador
+  } finally {
+    await sql.close();
   }
 }
 

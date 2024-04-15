@@ -369,6 +369,72 @@ app.post("/columns", async (req, res) => {
   }
 });
 
+app.post("/insertcolumns", async (req, res) => {
+  console.log("--- Insert Columnas ---");
+  console.log("- obteniendo datos");
+  const table = req.body.table;
+  const dataToInsert = req.body.data;
+
+  const config = {
+    server: req.body.server,
+    user: req.body.user,
+    password: req.body.password,
+    database: req.body.database,
+
+    options: {
+      trustedConnection: true,
+      encrypt: true, // Habilita la encriptación
+      validateBulkLoadParameters: false, // Desactiva la validación de parámetros de carga masiva
+      trustServerCertificate: true, // Ignora la validación del certificado (NO RECOMENDADO para producción)
+    },
+  };
+
+  const columns = dataToInsert.map((column) => column.name).join(", ");
+  const values = dataToInsert
+    .map((column) => {
+      if (column.type === "varchar") {
+        // Si el tipo es varchar, añadir comillas simples al valor
+        return `'${column.data}'`;
+      } else {
+        return column.data;
+      }
+    })
+    .join(", ");
+  const insertQuery = `INSERT INTO ${table} (${columns}) VALUES (${values});`;
+
+  try {
+    console.log("- Haciendo la consulta");
+    const result = await consultaSQL(config, insertQuery);
+    console.log("- Enviando resultado");
+    res.json({ message: "Se ha insertado correctamente" });
+  } catch (error) {
+    console.log(error);
+    if (error.message.includes("Violation of PRIMARY KEY constraint")) {
+      res
+        .status(400)
+        .json({ error: "La clave primaria ya existe en la tabla" });
+    } else {
+      res.status(500).json({ error: "Error al ejecutar la consulta SQL" });
+    }
+  }
+});
+
+app.post("/deleteColumn", async (req, res) => {
+  const config = {
+    server: req.body.server,
+    user: req.body.user,
+    password: req.body.password,
+    database: req.body.database,
+
+    options: {
+      trustedConnection: true,
+      encrypt: true, // Habilita la encriptación
+      validateBulkLoadParameters: false, // Desactiva la validación de parámetros de carga masiva
+      trustServerCertificate: true, // Ignora la validación del certificado (NO RECOMENDADO para producción)
+    },
+  };
+});
+
 app.post("/datas", async (req, res) => {
   console.log("--- datos ---");
   console.log("- obteniendo datos");

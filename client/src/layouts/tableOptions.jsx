@@ -1,4 +1,9 @@
-import { UpdateTableSQL, columnsSQL, datasSQL } from "../functions/httpHelper";
+import {
+  InsertTableSQL,
+  UpdateTableSQL,
+  columnsSQL,
+  datasSQL,
+} from "../functions/httpHelper";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Form,
@@ -8,12 +13,14 @@ import {
   Tabs,
   Dropdown,
   ButtonGroup,
+  Image,
 } from "react-bootstrap";
 import MakeToast from "./makeToast";
 
 const TableOptions = ({ table, config, database, reservedKeywords }) => {
   const [nameTable, setNameTable] = useState(table);
   const [nameTableError, setNameTableError] = useState("");
+  const [insert, setInsert] = useState([]);
 
   const [showToast, setShowToast] = useState(false);
   const [toastText, setToastText] = useState("text");
@@ -76,8 +83,21 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
         configServer: config,
         table: table,
       });
-      console.log(columns);
       setDatas(result);
+    }
+    if (key === "insert") {
+      const newData = columns.map((column) => ({
+        name: column.name, // Mantener el nombre existente
+        type: column.type, // Mantener el nombre existente
+        nullable: column.nullables, // Mantener el nombre existente
+        max: column.length, // Mantener el nombre existente
+        data: "", // Agregar el campo "dato"
+        primaryKeys: column.primaryKeys,
+      }));
+      console.log(columns);
+      console.log(newData);
+      // Agregar el nuevo array al estado usando setInsert
+      setInsert(newData);
     }
   };
 
@@ -241,7 +261,6 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
     setColumns(updatedColumns);
     // Enviar los datos
     if (!hasErrors && nameTable !== "") {
-      console.log("se enviaria los datos xd");
       const result = await UpdateTableSQL({
         database: database,
         configServer: config,
@@ -251,7 +270,6 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
         table: table,
       });
 
-      console.log(result);
       if (result.error) {
         setShowToast(true);
         setToastTitle("Error");
@@ -270,6 +288,72 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
     fetchColumns();
 
     setEnviandoDatos(false);
+  };
+
+  const handleChangeInsert = (e, index) => {
+    // Crear una copia del estado insert
+    const newInsert = [...insert];
+
+    // Actualizar el objeto en la posición 'index'
+    newInsert[index] = {
+      ...newInsert[index],
+      data: e.target.value, // Agregar datos adicionales aquí
+      dataError: "", // Agregar datos adicionales aquí
+    };
+
+    // Actualizar el estado insert con el nuevo objeto
+    setInsert(newInsert);
+  };
+
+  const submitInsert = async () => {
+    const hasEmptyNonNullable = insert.some(
+      (column) => !column.nullable && column.data === ""
+    );
+
+    if (hasEmptyNonNullable) {
+      const newData = insert.map((column) => ({
+        ...column,
+        dataError:
+          !column.nullable && column.data === ""
+            ? "Este dato no se puede enviar vacío"
+            : "",
+      }));
+
+      // Actualizar el estado insert con los datos actualizados
+      setInsert(newData);
+
+      return;
+    }
+
+    const result = await InsertTableSQL({
+      database: database,
+      configServer: config,
+      table: nameTable,
+      dataToInsert: insert,
+    });
+
+    console.log(result);
+
+    if (result.error) {
+      setShowToast(true);
+      setToastTitle("Error");
+      setToastText(result.error);
+      setToastVariant("danger");
+    }
+    if (result.message) {
+      setShowToast(true);
+      setToastTitle("Mensaje");
+      setToastText(result.message);
+      setToastVariant("");
+    }
+
+    console.log("Datos enviados correctamente.");
+  };
+
+  const deleteData = async (data) => {
+    console.log(data);
+    console.log(database);
+    console.log(table);
   };
 
   return (
@@ -448,7 +532,7 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
           </Table>
         </Tab>
         <Tab eventKey="datos" title="Datos">
-          <Table striped>
+          <Table bordered striped>
             <thead>
               <tr>
                 {columns && columns.length > 0 ? (
@@ -474,9 +558,78 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                       {columns.map((column, index) => (
                         <td index>{data[column.name]}</td>
                       ))}
+                      <td>
+                        <Dropdown as={ButtonGroup}>
+                          <Button variant="success">Modificar</Button>
+
+                          <Dropdown.Toggle
+                            split
+                            variant="success"
+                            id="dropdown-split-basic"
+                          />
+
+                          <Dropdown.Menu>
+                            <Dropdown.Item onClick={() => deleteData(data)}>
+                              Eliminar
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown>
+                      </td>
                     </tr>
                   </>
                 ))}
+            </tbody>
+          </Table>
+        </Tab>
+        <Tab eventKey="insert" title="Insertar">
+          <Table striped bordered>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>datos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {columns && columns.length > 0 ? (
+                <>
+                  {insert.map((column, index) => (
+                    <tr key={index}>
+                      <td>
+                        {column.primaryKeys && <Image src="./img/clave.png" />}{" "}
+                        {column.name}
+                      </td>
+                      <td>
+                        <Form.Control
+                          value={column.data}
+                          type={
+                            column.type === "date"
+                              ? "date"
+                              : column.type === "time"
+                              ? "time"
+                              : column.type === "int"
+                              ? "number"
+                              : "text"
+                          }
+                          required={true}
+                          onChange={(e) => handleChangeInsert(e, index)}
+                          isInvalid={column.dataError ? true : false}
+                          maxLength={column.max}
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {column.dataError ? column.dataError : ""}
+                        </Form.Control.Feedback>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td colSpan={2}>
+                      <Button onClick={submitInsert}>Enviar</Button>
+                    </td>
+                  </tr>
+                </>
+              ) : (
+                ""
+              )}
             </tbody>
           </Table>
         </Tab>
