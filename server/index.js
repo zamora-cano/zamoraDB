@@ -94,6 +94,38 @@ app.post("/tables", async (req, res) => {
   }
 });
 
+app.post("/querysql", async (req, res) => {
+  console.log("--- obtener tablas ---");
+  const config = {
+    server: req.body.server,
+    user: req.body.user,
+    password: req.body.password,
+
+    options: {
+      trustedConnection: true,
+      encrypt: true, // Habilita la encriptación
+      validateBulkLoadParameters: false, // Desactiva la validación de parámetros de carga masiva
+      trustServerCertificate: true, // Ignora la validación del certificado (NO RECOMENDADO para producción)
+    },
+  };
+
+  const consulta = req.body.query;
+
+  try {
+    console.log("- Haciendo la consulta");
+    const result = await consultaSQL(config, consulta);
+    console.log("- Enviando resultado");
+    res.json({ message: result });
+    await sql.close();
+  } catch (error) {
+    res.status(500).json({
+      error: "Error al ejecutar la consulta SQL",
+      messageError: error,
+    });
+    await sql.close();
+  }
+});
+
 app.post("/createtable", async (req, res) => {
   console.log("--- CrearTable ---");
   console.log("- obteniendo datos");

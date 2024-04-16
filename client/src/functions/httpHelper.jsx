@@ -302,6 +302,26 @@ const deleteDBSQL = async ({ configServer, namedb }) => {
   return data;
 };
 
+const querySQL = async ({ configServer, query }) => {
+  const config = {
+    user: configServer.user,
+    server: configServer.server,
+    password: configServer.password,
+    query: query,
+  };
+  const response = await fetch("http://localhost:3001/querysql", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(config), // Convertir el objeto a una cadena JSON
+  });
+
+  const data = await response.json(); // Esperar la respuesta JSON
+
+  return data;
+};
+
 export {
   createConectionSQL,
   tablesSQL,
@@ -315,4 +335,5 @@ export {
   deleteColumnSQL,
   updateData,
   deleteTableSQL,
+  querySQL,
 };

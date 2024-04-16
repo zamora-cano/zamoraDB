@@ -446,7 +446,7 @@ const Manager = () => {
                 >
                   <Tab eventKey="query" title="Consultas">
                     {selectedServer ? (
-                      <ConsultaSQL></ConsultaSQL>
+                      <ConsultaSQL config={selectedConfig}></ConsultaSQL>
                     ) : (
                       <>No se ha seleccionado un servidor</>
                     )}
