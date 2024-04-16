@@ -220,7 +220,6 @@ const Manager = () => {
   const [selectedDataBase, setSelectedDataBase] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [selectedConfig, setSelectedConfig] = useState([]);
-  const [selectedIndex, setSelectedIndex] = useState();
 
   const [key, setKey] = useState("query");
 
@@ -228,8 +227,8 @@ const Manager = () => {
   const [nameDBCreate, setNameDBCreate] = useState("");
   const [nameDBCreateError, setNameDBCreateError] = useState("");
 
-  const [nameDBAlter, setNameDBAlter] = useState("");
-  const [nameDBAlterError, setNameDBAlterError] = useState("");
+  // const [nameDBAlter, setNameDBAlter] = useState("");
+  // const [nameDBAlterError, setNameDBAlterError] = useState("");
 
   const [showModalDeleteDatabase, setShowModalDeleteDatabase] = useState(false);
   const [nameDeleteDatabase, setNameDeleteDatabase] = useState({
@@ -345,10 +344,15 @@ const Manager = () => {
       configServer: config,
       namedb: nameDBCreate,
     });
+
+    console.log(result);
     if (result.error !== "") {
       setNameDBCreateError(result.error);
     }
-    setShowModalCreateDatabase(false);
+
+    if (result.message) {
+      setShowModalCreateDatabase(false);
+    }
     reload(index, config);
   };
 
@@ -357,18 +361,20 @@ const Manager = () => {
       configServer: nameDeleteDatabase.config,
       namedb: nameDeleteDatabase.nameDB,
     });
-    setShowModalDeleteDatabase(false);
+    if (result) {
+      setShowModalDeleteDatabase(false);
+    }
     reload(nameDeleteDatabase.index, nameDeleteDatabase.config);
   };
 
   return (
     <>
       <Table bordered>
-        <thead>
+        {/* <thead>
           <tr>
             <th colSpan={2}>Salir Opcion configuración</th>
           </tr>
-        </thead>
+        </thead> */}
         <tbody>
           <tr>
             <td>
@@ -483,9 +489,9 @@ const Manager = () => {
                         placeholder={DBnameConfig}
                         aria-label="Username"
                         aria-describedby="basic-addon1"
-                        onChange={(e) => {
-                          setNameDBAlter(e.target.value);
-                        }}
+                        // onChange={(e) => {
+                        //   setNameDBAlter(e.target.value);
+                        // }}
                       />
                       <Button variant="outline-secondary" id="button-addon1">
                         Cambiar nombre
@@ -499,7 +505,7 @@ const Manager = () => {
           <tr>
             <td>
               <div className={styles.sectionConections}>
-                {conections.length > 0 ? (
+                {conections && conections.length > 0 ? (
                   <>
                     {conections.map((server, indexConection) => (
                       <>
@@ -509,10 +515,12 @@ const Manager = () => {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedServer(server.serverName);
-                              setSelectedIndex(indexConection);
                             }}
                           >
-                            <Image src="./img/server.png" />
+                            <Image
+                              style={{ width: "35px" }}
+                              src="./img/server.png"
+                            />
                             {server.serverName}
                           </Accordion.Header>
                           <Accordion.Body eventKey="0">
@@ -522,6 +530,7 @@ const Manager = () => {
                                   <td>
                                     {/* boton crear bases de datos */}
                                     <Image
+                                      style={{ width: "25px" }}
                                       src="./img/addDatabase.png"
                                       onClick={handleShow}
                                     />
@@ -573,6 +582,7 @@ const Manager = () => {
                                     </Modal>
                                     {/* boton actualizar */}
                                     <Image
+                                      style={{ width: "25px" }}
                                       src="./img/actualizar.png"
                                       onClick={() =>
                                         reload(indexConection, server.config)
@@ -582,6 +592,7 @@ const Manager = () => {
 
                                   <td style={{ textAlign: "end" }}>
                                     <Image
+                                      style={{ width: "25px" }}
                                       src="./img/cerrarSesion.png"
                                       onClick={() =>
                                         desconectar(indexConection)
@@ -610,7 +621,10 @@ const Manager = () => {
                                   eventKey="0"
                                   onClick={() => {}}
                                 >
-                                  <Image src="./img/database.png" />
+                                  <Image
+                                    style={{ width: "25px" }}
+                                    src="./img/database.png"
+                                  />
                                   {database.name}
                                 </Accordion.Header>
                                 <Accordion.Body eventKey="0">
@@ -620,6 +634,7 @@ const Manager = () => {
                                         <td>
                                           {/* ajustes de base de datos */}
                                           <Image
+                                            style={{ width: "25px" }}
                                             src="./img/ajustes.png"
                                             onClick={() =>
                                               setDBnameConfig(database.name)
@@ -628,6 +643,7 @@ const Manager = () => {
                                         </td>
                                         <td style={{ textAlign: "end" }}>
                                           <Image
+                                            style={{ width: "25px" }}
                                             src="./img/boteBorrar.png"
                                             onClick={() => {
                                               setNameDeleteDatabase({
@@ -651,10 +667,17 @@ const Manager = () => {
                                             key={index}
                                             onClick={() => {
                                               setSelectedTable(table.name);
+                                              setSelectedDataBase(
+                                                database.name
+                                              );
+                                              setSelectedConfig(server.config);
                                             }}
                                           >
                                             <td>
-                                              <Image src="./img/table.png" />{" "}
+                                              <Image
+                                                style={{ width: "25px" }}
+                                                src="./img/table.png"
+                                              />{" "}
                                               {table.name}
                                             </td>
                                           </tr>

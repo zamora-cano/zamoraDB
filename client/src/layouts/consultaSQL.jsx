@@ -3,6 +3,8 @@ import { Table, Form } from "react-bootstrap";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { darcula } from "react-syntax-highlighter/dist/esm/styles/prism";
 
+import AceEditor from "react-ace";
+
 const ConsultaSQL = () => {
   const [consulta, setConsulta] = useState(
     "use database name_database; \n select * from name_table"
@@ -18,14 +20,20 @@ const ConsultaSQL = () => {
           </tr>
           <tr>
             <th>
-              <Form.Control
-                as="textarea"
-                rows={15}
-                onChange={(event) => {
-                  setConsulta(event.target.value);
-                }}
+              <AceEditor
+                mode="sql"
+                theme="crimson_editor"
                 value={consulta}
-              ></Form.Control>
+                fontSize={14}
+                showPrintMargin
+                highlightActiveLine
+                onChange={(newValue) => {
+                  setConsulta(newValue);
+                }}
+                setOptions={{
+                  enableBasicAutocompletion: true,
+                }}
+              ></AceEditor>
             </th>
           </tr>
         </thead>

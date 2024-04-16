@@ -385,10 +385,6 @@ const CreacionSQL = ({ selectedDatabase, reservedKeywords, config }) => {
             </tbody>
           </Table>
         </Tab>
-
-        <Tab eventKey="datos" title="datos">
-          insertar datos
-        </Tab>
       </Tabs>
     </>
   );

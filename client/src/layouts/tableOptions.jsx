@@ -3,6 +3,9 @@ import {
   UpdateTableSQL,
   columnsSQL,
   datasSQL,
+  deleteColumnSQL,
+  deleteTableSQL,
+  updateData,
 } from "../functions/httpHelper";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -14,6 +17,7 @@ import {
   Dropdown,
   ButtonGroup,
   Image,
+  Modal,
 } from "react-bootstrap";
 import MakeToast from "./makeToast";
 
@@ -40,6 +44,8 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
       nullables: false,
     },
   ]);
+
+  const [showModal, setShowModal] = useState(false);
 
   const [datas, setDatas] = useState([]);
 
@@ -94,8 +100,7 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
         data: "", // Agregar el campo "dato"
         primaryKeys: column.primaryKeys,
       }));
-      console.log(columns);
-      console.log(newData);
+
       // Agregar el nuevo array al estado usando setInsert
       setInsert(newData);
     }
@@ -351,9 +356,102 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
   };
 
   const deleteData = async (data) => {
-    console.log(data);
-    console.log(database);
-    console.log(table);
+    const result = await deleteColumnSQL({
+      database: database,
+      configServer: config,
+      table: table,
+      dataColumn: data,
+    });
+
+    if (result.error) {
+      setShowToast(true);
+      setToastTitle("Error");
+      setToastText(result.error);
+      setToastVariant("danger");
+    }
+    if (result.message) {
+      setShowToast(true);
+      setToastTitle("Mensaje");
+      setToastText(result.message);
+      setToastVariant("");
+    }
+
+    const resultData = await datasSQL({
+      database: database,
+      configServer: config,
+      table: table,
+    });
+    setDatas(resultData);
+  };
+
+  const changeUpdate = (index) => {
+    const updatedDatas = [...datas]; // Creamos una copia del array datas
+    updatedDatas[index] = {
+      ...updatedDatas[index],
+      modificando: !updatedDatas[index].modificando,
+    }; // Actualizamos el objeto en el índice especificado con modificando invertido
+    setDatas(updatedDatas); // Actualizamos el estado datas con la nueva copia
+  };
+
+  const sendUpdateData = async (data) => {
+    const dataToSend = { ...data }; // Copia el objeto para no modificar el original
+    delete dataToSend.modificando; // Elimina el campo "modificando"
+    const result = await updateData({
+      configServer: config,
+      database,
+      table,
+      datatoupdate: dataToSend,
+    });
+
+    if (result.error) {
+      setShowToast(true);
+      setToastTitle("Error");
+      setToastText(result.error);
+      setToastVariant("danger");
+    }
+    if (result.message) {
+      setShowToast(true);
+      setToastTitle("Mensaje");
+      setToastText(result.message);
+      setToastVariant("");
+    }
+    const resultData = await datasSQL({
+      database: database,
+      configServer: config,
+      table: table,
+    });
+    setDatas(resultData);
+  };
+
+  const addUpdatedata = (e, index, name) => {
+    const updatedDatas = [...datas];
+    updatedDatas[index] = {
+      ...updatedDatas[index],
+      [name]: e.target.value,
+    };
+    setDatas(updatedDatas); // Actualizamos el estado datas con la nueva copia
+  };
+
+  const deleteTable = async () => {
+    const result = await deleteTableSQL({
+      configServer: config,
+      database,
+      table,
+    });
+
+    if (result.error) {
+      setShowToast(true);
+      setToastTitle("Error");
+      setToastText(result.error);
+      setToastVariant("danger");
+    }
+    if (result.message) {
+      setShowToast(true);
+      setToastTitle("Mensaje");
+      setToastText(result.message);
+      setToastVariant("");
+      setShowModal(false);
+    }
   };
 
   return (
@@ -399,9 +497,45 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                     </Button>
                     <Dropdown.Toggle split variant="primary" />
                     <Dropdown.Menu>
-                      <Dropdown.Item>Borrar Tabla</Dropdown.Item>
+                      <Dropdown.Item onClick={() => setShowModal(true)}>
+                        Borrar Tabla
+                      </Dropdown.Item>
                     </Dropdown.Menu>
                   </Dropdown>
+
+                  <Modal
+                    show={showModal}
+                    onHide={() => {
+                      setShowModal(false);
+                    }}
+                    centered
+                  >
+                    <Modal.Header closeButton>
+                      <Modal.Title>Borrar tabla</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                      ¿Está seguro de hacer esto? esta accion no se puede
+                      revertir
+                    </Modal.Body>
+                    <Modal.Footer>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setShowModal(false);
+                        }}
+                      >
+                        Close
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => {
+                          deleteTable(false);
+                        }}
+                      >
+                        Borrar
+                      </Button>
+                    </Modal.Footer>
+                  </Modal>
                 </td>
               </tr>
               <tr>
@@ -555,25 +689,72 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                   <>
                     <tr>
                       <td>{index + 1}</td>
-                      {columns.map((column, index) => (
-                        <td index>{data[column.name]}</td>
-                      ))}
+                      {data.modificando
+                        ? columns.map((column) => (
+                            <td>
+                              <Form.Control
+                                value={data["new" + column.name]}
+                                type={
+                                  column.type === "date"
+                                    ? "date"
+                                    : column.type === "time"
+                                    ? "time"
+                                    : column.type === "int"
+                                    ? "number"
+                                    : "text"
+                                }
+                                onChange={(e) => {
+                                  addUpdatedata(e, index, "new" + column.name);
+                                }}
+                                isInvalid={column.dataError ? true : false}
+                                maxLength={column.length}
+                              />
+                            </td>
+                          ))
+                        : columns.map((column, index) => (
+                            <td key={index}>{data[column.name]}</td>
+                          ))}
+
                       <td>
-                        <Dropdown as={ButtonGroup}>
-                          <Button variant="success">Modificar</Button>
+                        {data.modificando ? (
+                          <>
+                            <Button
+                              variant="secondary"
+                              onClick={() => changeUpdate(index)}
+                            >
+                              Cancelar
+                            </Button>{" "}
+                            <Button
+                              variant="primary"
+                              onClick={() => sendUpdateData(data)}
+                            >
+                              Enviar
+                            </Button>
+                          </>
+                        ) : (
+                          <Dropdown as={ButtonGroup}>
+                            <Button
+                              variant="success"
+                              onClick={() => {
+                                changeUpdate(index);
+                              }}
+                            >
+                              Modificar
+                            </Button>
 
-                          <Dropdown.Toggle
-                            split
-                            variant="success"
-                            id="dropdown-split-basic"
-                          />
+                            <Dropdown.Toggle
+                              split
+                              variant="success"
+                              id="dropdown-split-basic"
+                            />
 
-                          <Dropdown.Menu>
-                            <Dropdown.Item onClick={() => deleteData(data)}>
-                              Eliminar
-                            </Dropdown.Item>
-                          </Dropdown.Menu>
-                        </Dropdown>
+                            <Dropdown.Menu>
+                              <Dropdown.Item onClick={() => deleteData(data)}>
+                                Eliminar
+                              </Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown>
+                        )}
                       </td>
                     </tr>
                   </>
@@ -595,7 +776,12 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                   {insert.map((column, index) => (
                     <tr key={index}>
                       <td>
-                        {column.primaryKeys && <Image src="./img/clave.png" />}{" "}
+                        {column.primaryKeys && (
+                          <Image
+                            style={{ width: "25px" }}
+                            src="./img/clave.png"
+                          />
+                        )}{" "}
                         {column.name}
                       </td>
                       <td>
@@ -610,7 +796,6 @@ const TableOptions = ({ table, config, database, reservedKeywords }) => {
                               ? "number"
                               : "text"
                           }
-                          required={true}
                           onChange={(e) => handleChangeInsert(e, index)}
                           isInvalid={column.dataError ? true : false}
                           maxLength={column.max}

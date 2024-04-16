@@ -311,7 +311,6 @@ app.post("/updatetable", async (req, res) => {
       );
     } catch {}
 
-    console.log(queries);
     for (const query of queries) {
       console.log(query.sql);
       try {
@@ -389,19 +388,31 @@ app.post("/insertcolumns", async (req, res) => {
     },
   };
 
+  // Validar que se hayan proporcionado datos
+  if (!dataToInsert || dataToInsert.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "No se proporcionaron datos para insertar." });
+  }
+
+  // Crear la lista de columnas y valores
   const columns = dataToInsert.map((column) => column.name).join(", ");
   const values = dataToInsert
     .map((column) => {
-      if (column.type === "varchar") {
-        // Si el tipo es varchar, añadir comillas simples al valor
+      if (column.type === "date") {
+        // Si el tipo es date, convertir el valor a una cadena con el formato adecuado para SQL
+        return `'${column.data}'`;
+      } else if (column.type === "varchar") {
+        // Si el tipo es varchar, envolver el valor entre comillas simples
         return `'${column.data}'`;
       } else {
+        // Para otros tipos de valores (int, etc.), no agregar comillas
         return column.data;
       }
     })
     .join(", ");
-  const insertQuery = `INSERT INTO ${table} (${columns}) VALUES (${values});`;
 
+  const insertQuery = `INSERT INTO ${table} (${columns}) VALUES (${values});`;
   try {
     console.log("- Haciendo la consulta");
     const result = await consultaSQL(config, insertQuery);
@@ -419,12 +430,13 @@ app.post("/insertcolumns", async (req, res) => {
   }
 });
 
-app.post("/deleteColumn", async (req, res) => {
+app.post("/deletecolumn", async (req, res) => {
   const config = {
     server: req.body.server,
     user: req.body.user,
     password: req.body.password,
     database: req.body.database,
+    table: req.body.table,
 
     options: {
       trustedConnection: true,
@@ -433,6 +445,127 @@ app.post("/deleteColumn", async (req, res) => {
       trustServerCertificate: true, // Ignora la validación del certificado (NO RECOMENDADO para producción)
     },
   };
+
+  const data = req.body.data;
+
+  // Validar que se hayan proporcionado datos
+  if (!data || Object.keys(data).length === 0) {
+    return res
+      .status(400)
+      .json({ error: "No se proporcionaron datos para eliminar." });
+  }
+
+  // Crear la lista de condiciones WHERE
+  const whereConditions = Object.keys(data)
+    .map((key) => {
+      const value = data[key];
+      if (value === null) {
+        return `${key} IS NULL`;
+      } else if (typeof value === "string") {
+        return `${key} = '${value}'`;
+      } else {
+        return `${key} = ${value}`;
+      }
+    })
+    .join(" AND ");
+
+  // Construir la consulta DELETE
+  const deleteQuery = `DELETE FROM ${config.table} WHERE ${whereConditions};`;
+
+  try {
+    console.log("- Haciendo la consulta");
+    await consultaSQL(config, deleteQuery);
+    console.log("- Eliminación exitosa");
+    res.status(200).json({ message: "Eliminación exitosa" });
+  } catch (error) {
+    console.error(
+      "- Error al ejecutar la consulta de eliminación:",
+      error.message
+    );
+    res
+      .status(500)
+      .json({ error: "Error al ejecutar la consulta de eliminación SQL" });
+  }
+});
+
+app.post("/updatedatas", async (req, res) => {
+  console.log("--- Update de un dato ---");
+  console.log("- obteniendo datos");
+  const data = req.body.data;
+
+  const config = {
+    server: req.body.server,
+    user: req.body.user,
+    password: req.body.password,
+    database: req.body.database,
+    table: req.body.table,
+    options: {
+      trustedConnection: true,
+      encrypt: true,
+      validateBulkLoadParameters: false,
+      trustServerCertificate: true, // Ignora la validación del certificado (NO RECOMENDADO para producción)
+    },
+  };
+  try {
+    if (!data || typeof data !== "object") {
+      throw new Error(
+        "Los datos proporcionados para actualizar no son válidos."
+      );
+    }
+
+    const primaryKey = "id"; // Suponemos que la clave primaria es 'id'
+    const primaryKeyValue = data[primaryKey];
+
+    // Creamos la lista de actualizaciones
+    const updatesList = [];
+
+    // Recorremos las claves del objeto data
+    for (const key in data) {
+      // Excluimos el campo de la clave primaria de las actualizaciones
+      if (key !== primaryKey && data.hasOwnProperty(key)) {
+        // Verificamos si el campo tiene la propiedad 'new'
+        if (key.startsWith("new")) {
+          // Si es un campo 'new', agregamos la actualización correspondiente
+          const originalKey = key.substring(3); // Eliminamos el prefijo 'new' para obtener el nombre original del campo
+          updatesList.push(`${originalKey} = '${data[key]}'`);
+        }
+      }
+    }
+
+    // Verificamos si hay campos para actualizar
+    if (updatesList.length === 0) {
+      throw new Error("No hay campos nuevos para actualizar.");
+    }
+
+    const whereConditions = Object.keys(data)
+      .filter((key) => !key.startsWith("new")) // Excluimos los datos que tienen "new" al inicio de su nombre
+      .map((key) => {
+        const value = data[key];
+        if (value === null) {
+          return `${key} IS NULL`;
+        } else if (typeof value === "string") {
+          return `${key} = '${value}'`;
+        } else {
+          return `${key} = ${value}`;
+        }
+      })
+      .join(" AND ");
+
+    // Construimos la consulta UPDATE
+    const updateQuery = `UPDATE ${config.table} SET ${updatesList.join(
+      ", "
+    )} WHERE ${whereConditions}`;
+
+    console.log("- Haciendo la consulta");
+    await consultaSQL(config, updateQuery);
+    console.log("- Actualización exitosa");
+    res.status(200).json({ message: "Actualización exitosa" });
+  } catch (error) {
+    console.error("- Error al ejecutar la actualización:", error.message);
+    res
+      .status(500)
+      .json({ error: "Error al ejecutar la actualización de datos" });
+  }
 });
 
 app.post("/datas", async (req, res) => {
@@ -468,6 +601,44 @@ app.post("/datas", async (req, res) => {
   }
 });
 
+app.post("/droptable", async (req, res) => {
+  console.log("--- CrearDB ---");
+  console.log("- obteniendo datos");
+  const table = req.body.table;
+
+  const config = {
+    server: req.body.server,
+    user: req.body.user,
+    password: req.body.password,
+    database: req.body.database,
+    options: {
+      trustedConnection: true,
+      encrypt: true,
+      validateBulkLoadParameters: false,
+      trustServerCertificate: true, // Ignora la validación del certificado (NO RECOMENDADO para producción)
+    },
+  };
+
+  const consulta = `DROP TABLE ${table};`;
+  console.log(config);
+  console.log(consulta);
+  try {
+    console.log("- Haciendo la consulta");
+    const result = await consultaSQL(config, consulta);
+    console.log(result);
+    console.log("- Enviando resultado");
+    res.json({ message: "La tabla se eliminó correctamente" });
+  } catch (error) {
+    // console.error("- Error al ejecutar la consulta SQL:", error);
+    if (error.code === "EREQUEST" && error.message.includes("already exists")) {
+      res.status(400).json({ error: "La base de datos ya existe" });
+    } else {
+      console.error("- Error al ejecutar la consulta SQL:", error);
+      res.status(500).json({ error: "Error al ejecutar la consulta SQL" });
+    }
+  }
+});
+
 app.post("/createdb", async (req, res) => {
   console.log("--- CrearDB ---");
   console.log("- obteniendo datos");
@@ -490,7 +661,6 @@ app.post("/createdb", async (req, res) => {
   try {
     console.log("- Haciendo la consulta");
     const result = await consultaSQL(config, consulta);
-    console.log(result);
     console.log("- Enviando resultado");
     res.json({ message: "La base de datos se creó correctamente" });
   } catch (error) {
